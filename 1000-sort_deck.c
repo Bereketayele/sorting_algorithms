@@ -1,52 +1,62 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include "deck.h"
 
-/**
- * compare_cards - Comparator function for qsort to compare two cards
- * @card1: Pointer to the first card
- * @card2: Pointer to the second card
- *
- * Return: Negative value if card1 is less than card2,
- *         0 if card1 is equal to card2,
- *         Positive value if card1 is greater than card2
- */
-int compare_cards(const void *card1, const void *card2)
+int compare_cards(const void *a, const void *b)
 {
-    const card_t *c1 = *(const card_t **)card1;
-    const card_t *c2 = *(const card_t **)card2;
+    const card_t *card_a = (*(const deck_node_t **)a)->card;
+    const card_t *card_b = (*(const deck_node_t **)b)->card;
 
-    if (c1->kind != c2->kind)
-        return (c1->kind - c2->kind);
-    return (strcmp(c1->value, c2->value));
+    // Compare the kind first
+    if (card_a->kind != card_b->kind)
+        return card_a->kind - card_b->kind;
+
+    // If the kind is the same, compare the value
+    // Note: Assuming the card values are in the order "Ace" to "King"
+    const char *values[] = {"Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"};
+    int value_a = 0;
+    int value_b = 0;
+    for (int i = 0; i < 13; i++) {
+        if (card_a->value == values[i])
+            value_a = i;
+        if (card_b->value == values[i])
+            value_b = i;
+    }
+
+    return value_a - value_b;
 }
 
-/**
- * sort_deck - Sorts a deck of cards in ascending order
- * @deck: Pointer to the head of the deck
- */
 void sort_deck(deck_node_t **deck)
 {
-    size_t deck_size = 0;
-    deck_node_t *node = *deck;
-    card_t *cards[52];
-
-    while (node != NULL)
-    {
-        cards[deck_size] = (card_t *)node->card;
-        node = node->next;
-        deck_size++;
+    // Count the number of cards
+    int count = 0;
+    deck_node_t *current = *deck;
+    while (current) {
+        count++;
+        current = current->next;
     }
 
-    qsort(cards, deck_size, sizeof(card_t *), compare_cards);
+    // Create an array of deck_node_t pointers
+    deck_node_t **deck_array = malloc(count * sizeof(deck_node_t *));
+    if (!deck_array)
+        return;
 
-    for (size_t i = 0; i < deck_size; i++)
-    {
-        if (i == 0)
-            cards[i]->kind = SPADE;
-        else if (cards[i]->value != cards[i - 1]->value)
-            cards[i]->kind = (kind_t)(cards[i - 1]->kind + 1);
-        (*deck)->card = cards[i];
-        (*deck) = (*deck)->next;
+    // Copy the deck into the array
+    current = *deck;
+    for (int i = 0; i < count; i++) {
+        deck_array[i] = current;
+        current = current->next;
     }
+
+    // Sort the array using qsort
+    qsort(deck_array, count, sizeof(deck_node_t *), compare_cards);
+
+    // Rearrange the linked list based on the sorted array
+    *deck = deck_array[0];
+    for (int i = 0; i < count - 1; i++) {
+        deck_array[i]->next = deck_array[i + 1];
+        deck_array[i + 1]->prev = deck_array[i];
+    }
+    deck_array[count - 1]->next = NULL;
+
+    free(deck_array);
 }
